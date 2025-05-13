@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException,Depends,status
 from sqlmodel import select
+from fastapi.security import OAuth2PasswordRequestForm
 from app.db.session import get_session
 from app.db.models import User
 from app.models.user import  UserCreate,Token,UserLogin
@@ -54,17 +55,20 @@ def register(
 
 @router.post("/login", response_model=Token)
 def login(
-        user_in: UserLogin,
-        session = Depends(get_session)
+        form_data: OAuth2PasswordRequestForm = Depends(),
+        session=Depends(get_session)
 ):
     user = session.exec(
-        select(User).where(User.username == user_in.username)
+        select(User).where(
+            User.username == form_data.username
+        )
     ).first()
 
-    if not user or not verify_password(user_in.password, user.hashed_password):
+    if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Kullanıcı adı veya şifre hatalı",
+            detail="Yanlış kullanıcı adı veya şifre",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
     token = create_access_token({"sub": user.username})

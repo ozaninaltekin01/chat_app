@@ -12,8 +12,8 @@ class User(SQLModel, table=True):
     hashed_password: str
 
     #opisyonel/ek bilgiler
-    is_acitve: bool = Field(default=True)
-    crated_at: datetime = Field(default_factory=datetime.utcnow)
+    is_active: bool = Field(default=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     last_login: Optional[datetime] = None
     avatar_url: Optional[str] = None

@@ -1,5 +1,9 @@
 from tkinter.constants import ACTIVE
-
+from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends, HTTPException, status
+from app.db.session import get_session
+from app.db.models import User
+from sqlmodel import select
 from passlib.context import CryptContext
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
@@ -46,3 +50,34 @@ def decode_access_token(token: str) -> dict:
         return payload
     except JWTError as e:
         raise e
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
+def get_current_user(
+        token: str = Depends(oauth2_scheme),
+        session=Depends(get_session)
+) -> User:
+
+    try:
+        payload = decode_access_token(token)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Geçersiz token",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    username: str = payload.get("sub")
+    if username is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token içinde kullanıcı bilgisi yok",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+
+    user = session.exec(select(User).where(User.username == username)).first()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Kullanıcı bulunamadı",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    return user
